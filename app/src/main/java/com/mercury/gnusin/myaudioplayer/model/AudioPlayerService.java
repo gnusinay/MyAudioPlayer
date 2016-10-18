@@ -103,11 +103,7 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
 
     public void stop() {
         Log.d("AGn", "stop() service");
-
         mediaPlayer.stop();
-        mediaPlayer.release();
-        mediaPlayer = null;
-        stopForeground(true);
         playerState = State.STOP;
     }
 

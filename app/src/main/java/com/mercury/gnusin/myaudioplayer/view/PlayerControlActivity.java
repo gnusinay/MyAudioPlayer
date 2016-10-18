@@ -39,17 +39,18 @@ public class PlayerControlActivity extends AppCompatActivity {
 
     @AfterViews
     void init() {
-        changeUIByState(StateUI.NO_BIND);
+        /*changeUIByState(StateUI.NO_BIND);
         playerPresenter = (AudioPlayerPresenter) getLastCustomNonConfigurationInstance();
         if (playerPresenter == null) {
             playerPresenter = new AudioPlayerPresenter(getApplicationContext());
         }
-        playerPresenter.bindActivity(this);
+        playerPresenter.bindActivity(this);*/
+
+        playerPresenter = new AudioPlayerPresenter(this);
     }
 
     @Override
     public Object onRetainCustomNonConfigurationInstance() {
-        playerPresenter.unbindActivity();
         return playerPresenter;
     }
 
@@ -71,12 +72,15 @@ public class PlayerControlActivity extends AppCompatActivity {
                 break;
             case StateUI.PLAY:
                 playPauseButton.setImageResource(R.mipmap.pause_button);
+                stopButton.setImageResource(R.mipmap.stop_button);
                 break;
             case StateUI.PAUSE:
                 playPauseButton.setImageResource(R.mipmap.play_button);
+                stopButton.setImageResource(R.mipmap.stop_button);
                 break;
             case StateUI.STOP:
                 playPauseButton.setImageResource(R.mipmap.play_button);
+                stopButton.setImageResource(R.mipmap.stop_button);
                 break;
         }
     }
@@ -88,7 +92,6 @@ public class PlayerControlActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         playerPresenter.unbindActivity();
-        playerPresenter.release(this);
         super.onDestroy();
     }
 }

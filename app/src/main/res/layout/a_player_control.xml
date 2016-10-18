@@ -22,13 +22,11 @@
             android:id="@+id/play_pause_button"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:src="@mipmap/play_button"
             android:layout_weight="1"/>
         <ImageButton
             android:id="@+id/stop_button"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:src="@mipmap/stop_button"
             android:layout_weight="1"/>
     </LinearLayout>
 </RelativeLayout>

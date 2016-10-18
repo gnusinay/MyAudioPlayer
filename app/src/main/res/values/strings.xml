@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Audio Player</string>
+
+    <string name="unready_audio_player_error_message">Error Audio player initialization</string>
+</resources>

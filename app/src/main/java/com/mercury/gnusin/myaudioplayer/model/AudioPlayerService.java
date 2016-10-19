@@ -11,11 +11,11 @@ import android.net.Uri;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.support.annotation.IntDef;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.NotificationCompat;
 import android.util.Log;
-
-import com.mercury.gnusin.myaudioplayer.view.PlayerControlActivity;
 import com.mercury.gnusin.myaudioplayer.R;
+import com.mercury.gnusin.myaudioplayer.view.PlayerControlActivity_;
 
 import java.io.IOException;
 import java.lang.annotation.Retention;
@@ -40,71 +40,58 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
 
     private Notification notification;
 
-    public @State int getPlayerState() {
-        return playerState;
-    }
-
-    public void playContinue() {
+    @Override
+    public void onPrepared(MediaPlayer mp) {
         mediaPlayer.start();
         playerState = State.PLAY;
+        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(new Intent(ModelEvents.CHANGE_STATE_EVENT));
+
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationManager.notify(1, notification);
     }
+
+
 
     @Override
     public void onCreate() {
         super.onCreate();
-
-        Log.d("AGn", "onCreate() service");
-        mediaPlayer = new MediaPlayer();
-        mediaPlayer.setOnPreparedListener(this);
-        mediaPlayer.setOnErrorListener(this);
-
-        mediaPlayer.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
-        PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(),
-                                                                0,
-                                                                new Intent(getApplicationContext(), PlayerControlActivity.class),
-                                                                PendingIntent.FLAG_UPDATE_CURRENT);
-
-        notification = new NotificationCompat.Builder(getApplicationContext())
-                .setTicker("Ticker")
-                .setContentTitle("Title")
-                .setContentText("Text")
-                .setSmallIcon(R.mipmap.audio_player)
-                .setContentIntent(pendingIntent)
-                .build();
-        notification.flags |= Notification.FLAG_FOREGROUND_SERVICE;
-
-        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationManager.notify(1, notification);
-
-        startForeground(1, notification);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d("AGn", "onStartCommand() service");
-        return START_NOT_STICKY;
-    }
 
-    public void playNewTrack() {
-        mediaPlayer.reset();
         try {
-            mediaPlayer.setDataSource(getApplicationContext(), Uri.parse(audioFilePath));
-            notification.tickerText = audioFilePath.substring(audioFilePath.lastIndexOf("/") + 1, audioFilePath.length());
+            Uri audioFileUri = Uri.parse(audioFilePath);
+
+            mediaPlayer = new MediaPlayer();
+            mediaPlayer.setOnPreparedListener(this);
+            mediaPlayer.setOnErrorListener(this);
+
+            mediaPlayer.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
+
+            mediaPlayer.setDataSource(getApplicationContext(), audioFileUri);
             mediaPlayer.prepare();
+
+            PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(),
+                    0,
+                    new Intent(getApplicationContext(), PlayerControlActivity_.class),
+                    PendingIntent.FLAG_UPDATE_CURRENT);
+
+            notification = new NotificationCompat.Builder(getApplicationContext())
+                    .setContentTitle(getResources().getString(R.string.title_notification))
+                    .setContentText(String.format(getResources().getString(R.string.text_notification), audioFileUri.getPath().substring(audioFileUri.getPath().lastIndexOf("/") + 1, audioFileUri.getPath().length())))
+                    .setSmallIcon(R.mipmap.audio_player)
+                    .setContentIntent(pendingIntent)
+                    .build();
+            notification.flags |= Notification.FLAG_FOREGROUND_SERVICE;
+
+            startForeground(1, notification);
         } catch (IOException e) {
             e.printStackTrace(); // TODO fire event
         }
-    }
 
-    public void pause() {
-        mediaPlayer.pause();
-        playerState = State.PAUSE;
-    }
-
-    public void stop() {
-        Log.d("AGn", "stop() service");
-        mediaPlayer.stop();
-        playerState = State.STOP;
+        return START_NOT_STICKY;
     }
 
     @Override
@@ -119,15 +106,42 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
         return super.onUnbind(intent);
     }
 
-    @Override
-    public boolean onError(MediaPlayer mp, int what, int extra) {
-        return false;
+    public void playNewTrack() {
+        startService(new Intent(getApplicationContext(), AudioPlayerService.class));
+    }
+
+    public void playContinue() {
+        mediaPlayer.start();
+        playerState = State.PLAY;
+        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(new Intent(ModelEvents.CHANGE_STATE_EVENT));
+    }
+
+    public void pause() {
+        mediaPlayer.pause();
+        playerState = State.PAUSE;
+        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(new Intent(ModelEvents.CHANGE_STATE_EVENT));
+    }
+
+    public void stop() {
+        Log.d("AGn", "stop() service");
+        if (mediaPlayer != null) {
+            mediaPlayer.stop();
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
+        playerState = State.STOP;
+        stopForeground(true);
+        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(new Intent(ModelEvents.CHANGE_STATE_EVENT));
+    }
+
+    public @State int getPlayerState() {
+        return playerState;
     }
 
     @Override
-    public void onPrepared(MediaPlayer mp) {
-        mediaPlayer.start();
-        playerState = State.PLAY;
+    public boolean onError(MediaPlayer mp, int what, int extra) {
+        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(new Intent(ModelEvents.ERROR_EVENT));
+        return false;
     }
 
     @Override
@@ -137,9 +151,7 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
             mediaPlayer.stop();
             mediaPlayer.release();
             mediaPlayer = null;
-            stopForeground(true);
         }
         super.onDestroy();
-
     }
 }

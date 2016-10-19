@@ -6,13 +6,10 @@ import android.support.v7.app.AppCompatActivity;
 import android.widget.ImageButton;
 import com.mercury.gnusin.myaudioplayer.R;
 import com.mercury.gnusin.myaudioplayer.middlelayer.AudioPlayerPresenter;
-import com.mercury.gnusin.myaudioplayer.model.AudioPlayerService;
-
 import org.androidannotations.annotations.AfterViews;
 import org.androidannotations.annotations.Click;
 import org.androidannotations.annotations.EActivity;
 import org.androidannotations.annotations.ViewById;
-
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
@@ -39,14 +36,12 @@ public class PlayerControlActivity extends AppCompatActivity {
 
     @AfterViews
     void init() {
-        /*changeUIByState(StateUI.NO_BIND);
+        changeUIByState(StateUI.NO_BIND);
         playerPresenter = (AudioPlayerPresenter) getLastCustomNonConfigurationInstance();
         if (playerPresenter == null) {
             playerPresenter = new AudioPlayerPresenter(getApplicationContext());
         }
-        playerPresenter.bindActivity(this);*/
-
-        playerPresenter = new AudioPlayerPresenter(this);
+        playerPresenter.bindActivity(this);
     }
 
     @Override

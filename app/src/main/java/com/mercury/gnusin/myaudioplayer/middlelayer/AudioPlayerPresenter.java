@@ -14,6 +14,7 @@ import android.util.Log;
 import com.mercury.gnusin.myaudioplayer.R;
 import com.mercury.gnusin.myaudioplayer.model.AudioPlayerBinder;
 import com.mercury.gnusin.myaudioplayer.model.AudioPlayerService;
+import com.mercury.gnusin.myaudioplayer.model.ModelEvents;
 import com.mercury.gnusin.myaudioplayer.view.PlayerControlActivity;
 
 import java.util.ArrayList;
@@ -22,23 +23,13 @@ import java.util.List;
 
 public class AudioPlayerPresenter {
 
-
     private PlayerControlActivity boundActivity;
     private AudioPlayerBinder audioPlayerBinder;
     private ServiceConnection serviceConnection;
     private List<BroadcastReceiver> eventReceiverList = new ArrayList<>();
-    private boolean isStartService = false;
-    //private
 
 
-    public AudioPlayerPresenter(PlayerControlActivity activity) {
-        boundActivity = activity;
-
-    }
-
-    private void startAudioPlayerService (final Context context) {
-        context.startService(new Intent(context, AudioPlayerService.class));
-
+    public AudioPlayerPresenter(final Context context) {
         serviceConnection = new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName name, IBinder service) {
@@ -56,30 +47,6 @@ public class AudioPlayerPresenter {
                 Log.d("AGn", "Service UNREADY");
             }
         };
-    }
-
-    public void playPause() {
-        if (isStartService == false) {
-            startAudioPlayerService(boundActivity);
-        }
-
-        switch (audioPlayerBinder.getPlayerState()) {
-            case AudioPlayerService.State.PLAY:
-                    pause();
-                    break;
-            case AudioPlayerService.State.PAUSE:
-                    playContinue();
-                    break;
-            case AudioPlayerService.State.STOP:
-                    playNewTrack();
-                    break;
-        }
-    }
-
-    public void stop() {
-        audioPlayerBinder.stop();
-        boundActivity.stopService(new Intent(boundActivity, AudioPlayerService.class));
-        unbindActivity();
     }
 
     public void bindActivity(PlayerControlActivity activity) {
@@ -104,27 +71,32 @@ public class AudioPlayerPresenter {
         }
     }
 
-
-    private void playNewTrack() {
-        boundActivity.changeUIByState(PlayerControlActivity.StateUI.PLAY);
-        audioPlayerBinder.playNewTrack();
+    public void playPause() {
+        switch (audioPlayerBinder.getPlayerState()) {
+            case AudioPlayerService.State.PLAY:
+                    audioPlayerBinder.pause();
+                    break;
+            case AudioPlayerService.State.PAUSE:
+                    audioPlayerBinder.playContinue();
+                    break;
+            case AudioPlayerService.State.STOP:
+                    audioPlayerBinder.playNewTrack();
+                    break;
+        }
     }
 
-    private void playContinue() {
-        boundActivity.changeUIByState(PlayerControlActivity.StateUI.PLAY);
-        audioPlayerBinder.playContinue();
-    }
-
-    private void pause() {
-        boundActivity.changeUIByState(PlayerControlActivity.StateUI.PAUSE);
-        audioPlayerBinder.pause();
+    public void stop() {
+        audioPlayerBinder.stop();
+        boundActivity.stopService(new Intent(boundActivity, AudioPlayerService.class));
     }
 
     private void registrationEventReceivers(Context context) {
         BroadcastReceiver connectReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                boundActivity.changeUIByState(convertStateServerToStateUI(audioPlayerBinder.getPlayerState()));
+                if (boundActivity != null) {
+                    boundActivity.changeUIByState(convertStateServerToStateUI(audioPlayerBinder.getPlayerState()));
+                }
             }
         };
         eventReceiverList.add(connectReceiver);
@@ -133,12 +105,25 @@ public class AudioPlayerPresenter {
         BroadcastReceiver disconnectReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                boundActivity.changeUIByState(PlayerControlActivity.StateUI.NO_BIND);
-                boundActivity.showErrorMessage(R.string.unready_audio_player_error_message);
+                if (boundActivity != null) {
+                    boundActivity.changeUIByState(PlayerControlActivity.StateUI.NO_BIND);
+                    boundActivity.showErrorMessage(R.string.unready_audio_player_error_message);
+                }
             }
         };
         eventReceiverList.add(disconnectReceiver);
         LocalBroadcastManager.getInstance(context).registerReceiver(disconnectReceiver, new IntentFilter(MiddleLayerEvents.DISCONNECT_SERVICE));
+
+        BroadcastReceiver changeStatePlayerEvent = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (boundActivity != null) {
+                    boundActivity.changeUIByState(convertStateServerToStateUI(audioPlayerBinder.getPlayerState()));
+                }
+            }
+        };
+        eventReceiverList.add(changeStatePlayerEvent);
+        LocalBroadcastManager.getInstance(context).registerReceiver(changeStatePlayerEvent, new IntentFilter(ModelEvents.CHANGE_STATE_EVENT));
     }
 
     public void throwError() {
@@ -156,6 +141,4 @@ public class AudioPlayerPresenter {
             default: return PlayerControlActivity.StateUI.NO_BIND;
         }
     }
-
-
 }

@@ -1,5 +1,10 @@
 <resources>
     <string name="app_name">Audio Player</string>
 
+    <string name="title_notification">Audio Player</string>
+    <string name="text_notification">  Play -> %s</string>
+
+
     <string name="unready_audio_player_error_message">Error Audio player initialization</string>
+
 </resources>

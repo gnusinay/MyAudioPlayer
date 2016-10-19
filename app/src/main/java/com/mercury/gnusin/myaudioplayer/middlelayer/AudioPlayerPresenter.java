@@ -107,7 +107,7 @@ public class AudioPlayerPresenter {
             public void onReceive(Context context, Intent intent) {
                 if (boundActivity != null) {
                     boundActivity.changeUIByState(PlayerControlActivity.StateUI.NO_BIND);
-                    boundActivity.showErrorMessage(R.string.unready_audio_player_error_message);
+                    boundActivity.showErrorMessage(boundActivity.getResources().getString(R.string.init_audio_player_error_message));
                 }
             }
         };
@@ -124,6 +124,18 @@ public class AudioPlayerPresenter {
         };
         eventReceiverList.add(changeStatePlayerEvent);
         LocalBroadcastManager.getInstance(context).registerReceiver(changeStatePlayerEvent, new IntentFilter(ModelEvents.CHANGE_STATE_EVENT));
+
+        BroadcastReceiver errorPlayerEvent = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (boundActivity != null) {
+                    String errorMessage = intent.getStringExtra("error");
+                    boundActivity.showErrorMessage(String.format(boundActivity.getResources().getString(R.string.run_audio_player_error_message), errorMessage));
+                }
+            }
+        };
+        eventReceiverList.add(errorPlayerEvent);
+        LocalBroadcastManager.getInstance(context).registerReceiver(errorPlayerEvent, new IntentFilter(ModelEvents.ERROR_EVENT));
     }
 
     public void throwError() {

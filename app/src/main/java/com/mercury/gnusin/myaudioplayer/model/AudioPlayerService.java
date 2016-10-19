@@ -73,10 +73,9 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
             mediaPlayer.setDataSource(getApplicationContext(), audioFileUri);
             mediaPlayer.prepare();
 
-            PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(),
-                    0,
-                    new Intent(getApplicationContext(), PlayerControlActivity_.class),
-                    PendingIntent.FLAG_UPDATE_CURRENT);
+            Intent notificationIntent = new Intent(getApplicationContext(), PlayerControlActivity_.class);
+            notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, notificationIntent, PendingIntent.FLAG_CANCEL_CURRENT);
 
             notification = new NotificationCompat.Builder(getApplicationContext())
                     .setContentTitle(getResources().getString(R.string.title_notification))
@@ -88,7 +87,9 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
 
             startForeground(1, notification);
         } catch (IOException e) {
-            e.printStackTrace(); // TODO fire event
+            Intent errorIntent = new Intent(ModelEvents.ERROR_EVENT);
+            errorIntent.putExtra("error", e.toString());
+            LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(errorIntent);
         }
 
         return START_NOT_STICKY;

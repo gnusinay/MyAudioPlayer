@@ -80,8 +80,8 @@ public class PlayerControlActivity extends AppCompatActivity {
         }
     }
 
-    public void showErrorMessage(int resourceId) {
-        Snackbar.make(findViewById(R.id.a_player_control), resourceId, Snackbar.LENGTH_SHORT).show();
+    public void showErrorMessage(String message) {
+        Snackbar.make(findViewById(R.id.a_player_control), message, Snackbar.LENGTH_SHORT).show();
     }
 
     @Override

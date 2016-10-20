@@ -16,11 +16,6 @@
             </intent-filter>
         </activity>
         <service android:name=".model.AudioPlayerService"/>
-        
-       <!-- <receiver android:name=".RemoteControlReceiver">
-
-        </receiver>-->
-
     </application>
 
     <uses-permission android:name="android.permission.WAKE_LOCK"/>

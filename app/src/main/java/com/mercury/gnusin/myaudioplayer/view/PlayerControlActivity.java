@@ -3,37 +3,26 @@ package com.mercury.gnusin.myaudioplayer.view;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.media.AudioManager;
-import android.support.annotation.IntDef;
-import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
-import android.view.KeyEvent;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.SeekBar;
-
 import com.mercury.gnusin.myaudioplayer.R;
-import com.mercury.gnusin.myaudioplayer.middlelayer.AudioPlayerPresenter;
+import com.mercury.gnusin.myaudioplayer.model.AudioPlayer;
+import com.mercury.gnusin.myaudioplayer.model.AudioPlayerInterface;
+import com.mercury.gnusin.myaudioplayer.presenters.AudioPlayerPresenter;
+import com.mercury.gnusin.myaudioplayer.presenters.AudioPlayerPresenterInterface;
+
 import org.androidannotations.annotations.AfterViews;
 import org.androidannotations.annotations.Click;
 import org.androidannotations.annotations.EActivity;
 import org.androidannotations.annotations.SeekBarProgressChange;
 import org.androidannotations.annotations.ViewById;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
 
 
 @EActivity(R.layout.a_player_control)
-public class PlayerControlActivity extends AppCompatActivity {
-
-    @IntDef({StateUI.NO_BIND, StateUI.PLAY, StateUI.PAUSE, StateUI.STOP})
-    @Retention(RetentionPolicy.SOURCE)
-    public @interface StateUI {
-        int NO_BIND = 0;
-        int PLAY = 1;
-        int PAUSE = 2;
-        int STOP = 3;
-    }
+public class PlayerControlActivity extends AppCompatActivity implements AudioPlayerViewInterface {
 
     @ViewById(R.id.play_pause_button)
     ImageButton playPauseButton;
@@ -51,7 +40,7 @@ public class PlayerControlActivity extends AppCompatActivity {
     SeekBar volumeBar;
 
 
-    private AudioPlayerPresenter playerPresenter;
+    private AudioPlayerPresenterInterface playerPresenter;
 
     @AfterViews
     void init() {
@@ -62,13 +51,12 @@ public class PlayerControlActivity extends AppCompatActivity {
         volumeBar.setProgress(am.getStreamVolume(AudioManager.STREAM_MUSIC));
         volumeStateIcon.setImageResource(getVolumeStateIcon());
 
-        changeUIByState(StateUI.NO_BIND);
-
         playerPresenter = (AudioPlayerPresenter) getLastCustomNonConfigurationInstance();
         if (playerPresenter == null) {
-            playerPresenter = new AudioPlayerPresenter(getApplicationContext());
+            playerPresenter = new AudioPlayerPresenter(this, new AudioPlayer(getApplicationContext()));
         }
-        playerPresenter.bindActivity(this);
+
+        playerPresenter.bindView(this);
     }
 
     @Override
@@ -92,25 +80,27 @@ public class PlayerControlActivity extends AppCompatActivity {
             AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
             am.setStreamVolume(AudioManager.STREAM_MUSIC, progress, 0);
             volumeStateIcon.setImageResource(getVolumeStateIcon());
+
         }
     }
 
-    public void changeUIByState(@StateUI int stateUI) {
-        switch (stateUI) {
-            case StateUI.NO_BIND:
+    @Override
+    public void changeUIByPlayerState(@AudioPlayerInterface.PlayerState int playerState) {
+        switch (playerState) {
+            case AudioPlayerInterface.PlayerState.CONNECT:
                 playPauseButton.setImageResource(R.mipmap.play_button);
                 stopButton.setImageResource(R.mipmap.stop_button);
                 albumCover.setImageResource(R.mipmap.cover_default);
                 break;
-            case StateUI.PLAY:
+            case AudioPlayerInterface.PlayerState.PLAY:
                 playPauseButton.setImageResource(R.mipmap.pause_button);
                 stopButton.setImageResource(R.mipmap.stop_button);
                 break;
-            case StateUI.PAUSE:
+            case AudioPlayerInterface.PlayerState.PAUSE:
                 playPauseButton.setImageResource(R.mipmap.play_button);
                 stopButton.setImageResource(R.mipmap.stop_button);
                 break;
-            case StateUI.STOP:
+            case AudioPlayerInterface.PlayerState.STOP:
                 playPauseButton.setImageResource(R.mipmap.play_button);
                 stopButton.setImageResource(R.mipmap.stop_button);
                 albumCover.setImageResource(R.mipmap.cover_default);
@@ -118,12 +108,19 @@ public class PlayerControlActivity extends AppCompatActivity {
         }
     }
 
+    @Override
     public void setCover(Bitmap cover) {
         albumCover.setImageBitmap(cover);
     }
 
+    @Override
     public void showErrorMessage(String message) {
         Snackbar.make(findViewById(R.id.a_player_control), message, Snackbar.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public Context getContext() {
+        return getApplicationContext();
     }
 
     private int getVolumeStateIcon() {
@@ -143,8 +140,13 @@ public class PlayerControlActivity extends AppCompatActivity {
     }
 
     @Override
+    public void stopApp() {
+        finish();
+    }
+
+    @Override
     protected void onDestroy() {
-        playerPresenter.unbindActivity();
+        playerPresenter.unbindView();
         super.onDestroy();
     }
 }

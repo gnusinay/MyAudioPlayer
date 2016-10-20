@@ -7,4 +7,5 @@
 
     <string name="init_audio_player_error_message">Error Audio player initialization</string>
     <string name="run_audio_player_error_message">Error Audio player: %s</string>
+    <string name="no_set_track_error_message">track can not be played</string>
 </resources>

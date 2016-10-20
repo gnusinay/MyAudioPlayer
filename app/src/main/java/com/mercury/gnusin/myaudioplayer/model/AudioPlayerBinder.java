@@ -1,5 +1,6 @@
 package com.mercury.gnusin.myaudioplayer.model;
 
+import android.graphics.Bitmap;
 import android.os.Binder;
 
 
@@ -28,5 +29,9 @@ public class AudioPlayerBinder extends Binder {
 
     public void stop() {
         service.stop();
+    }
+
+    public Bitmap getPlayingTrackCover() {
+        return service.getPlayingTrackCover();
     }
 }

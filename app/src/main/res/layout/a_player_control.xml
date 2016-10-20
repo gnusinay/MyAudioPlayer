@@ -1,32 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/a_player_control"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:layout_margin="8dp">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <ImageView
+            android:id="@+id/volume_state_icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@mipmap/volume_off"
+            android:layout_gravity="center_vertical"/>
+
+        <SeekBar
+            android:id="@+id/volume_bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"/>
+
+    </LinearLayout>
 
     <ImageView
-        android:id="@+id/album_preview"
+        android:id="@+id/album_cover"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_centerInParent="true"/>
+        android:layout_centerInParent="true" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="50dp"
-        android:orientation="horizontal"
         android:layout_alignParentBottom="true"
+        android:orientation="horizontal"
         android:weightSum="2">
+
         <ImageButton
             android:id="@+id/play_pause_button"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_weight="1"/>
+            android:layout_weight="1" />
+
         <ImageButton
             android:id="@+id/stop_button"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_weight="1"/>
+            android:layout_weight="1" />
     </LinearLayout>
 </RelativeLayout>

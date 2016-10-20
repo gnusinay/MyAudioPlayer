@@ -7,6 +7,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.graphics.Bitmap;
+import android.media.AudioManager;
 import android.os.IBinder;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
@@ -91,11 +93,15 @@ public class AudioPlayerPresenter {
     }
 
     private void registrationEventReceivers(Context context) {
-        BroadcastReceiver connectReceiver = new BroadcastReceiver() {
+        final BroadcastReceiver connectReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 if (boundActivity != null) {
                     boundActivity.changeUIByState(convertStateServerToStateUI(audioPlayerBinder.getPlayerState()));
+                    Bitmap cover = audioPlayerBinder.getPlayingTrackCover();
+                    if (cover != null) {
+                        boundActivity.setCover(cover);
+                    }
                 }
             }
         };
@@ -118,7 +124,14 @@ public class AudioPlayerPresenter {
             @Override
             public void onReceive(Context context, Intent intent) {
                 if (boundActivity != null) {
-                    boundActivity.changeUIByState(convertStateServerToStateUI(audioPlayerBinder.getPlayerState()));
+                    @AudioPlayerService.State int playerState = audioPlayerBinder.getPlayerState();
+                    boundActivity.changeUIByState(convertStateServerToStateUI(playerState));
+                    if (playerState == AudioPlayerService.State.PLAY) {
+                        Bitmap cover = audioPlayerBinder.getPlayingTrackCover();
+                        if (cover != null) {
+                            boundActivity.setCover(cover);
+                        }
+                    }
                 }
             }
         };

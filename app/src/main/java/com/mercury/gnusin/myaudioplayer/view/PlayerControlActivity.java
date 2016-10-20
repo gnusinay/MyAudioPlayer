@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.media.AudioManager;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
+import android.view.KeyEvent;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.SeekBar;
@@ -42,13 +43,15 @@ public class PlayerControlActivity extends AppCompatActivity implements AudioPla
 
     private AudioPlayerPresenterInterface playerPresenter;
 
+    private AudioManager audioManager;
+
     @AfterViews
     void init() {
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
-        AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-        volumeBar.setMax(am.getStreamMaxVolume(AudioManager.STREAM_MUSIC));
-        volumeBar.setProgress(am.getStreamVolume(AudioManager.STREAM_MUSIC));
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        volumeBar.setMax(audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC));
+        volumeBar.setProgress(audioManager.getStreamVolume(AudioManager.STREAM_MUSIC));
         volumeStateIcon.setImageResource(getVolumeStateIcon());
 
         playerPresenter = (AudioPlayerPresenter) getLastCustomNonConfigurationInstance();
@@ -57,6 +60,27 @@ public class PlayerControlActivity extends AppCompatActivity implements AudioPla
         }
 
         playerPresenter.bindView(this);
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            int newVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) - 1;
+            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, 0);
+            volumeBar.setProgress(newVolume);
+            volumeStateIcon.setImageResource(getVolumeStateIcon());
+            return true;
+        }
+
+        if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_UP) {
+            int newVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) + 1;
+            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, 0);
+            volumeBar.setProgress(newVolume);
+            volumeStateIcon.setImageResource(getVolumeStateIcon());
+            return true;
+        }
+
+        return super.onKeyDown(keyCode, event);
     }
 
     @Override
@@ -77,10 +101,8 @@ public class PlayerControlActivity extends AppCompatActivity implements AudioPla
     @SeekBarProgressChange(R.id.volume_bar)
     void volumeBarProgressChange(SeekBar seekBar, int progress, boolean fromUser) {
         if (fromUser) {
-            AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-            am.setStreamVolume(AudioManager.STREAM_MUSIC, progress, 0);
+            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, progress, 0);
             volumeStateIcon.setImageResource(getVolumeStateIcon());
-
         }
     }
 

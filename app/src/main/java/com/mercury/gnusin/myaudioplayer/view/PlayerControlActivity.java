@@ -1,9 +1,13 @@
 package com.mercury.gnusin.myaudioplayer.view;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.media.AudioManager;
 import android.support.design.widget.Snackbar;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.view.KeyEvent;
 import android.widget.ImageButton;
@@ -45,6 +49,8 @@ public class PlayerControlActivity extends AppCompatActivity implements AudioPla
 
     private AudioManager audioManager;
 
+    private BroadcastReceiver volumeChangeReceiver;
+
     @AfterViews
     void init() {
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
@@ -58,6 +64,15 @@ public class PlayerControlActivity extends AppCompatActivity implements AudioPla
         if (playerPresenter == null) {
             playerPresenter = new AudioPlayerPresenter(this, new AudioPlayer(getApplicationContext()));
         }
+
+        volumeChangeReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                volumeBar.setProgress(audioManager.getStreamVolume(AudioManager.STREAM_MUSIC));
+                volumeStateIcon.setImageResource(getVolumeStateIcon());
+            }
+        };
+        registerReceiver(volumeChangeReceiver, new IntentFilter("android.media.VOLUME_CHANGED_ACTION"));
 
         playerPresenter.bindView(this);
     }
@@ -169,6 +184,7 @@ public class PlayerControlActivity extends AppCompatActivity implements AudioPla
     @Override
     protected void onDestroy() {
         playerPresenter.unbindView();
+        unregisterReceiver(volumeChangeReceiver);
         super.onDestroy();
     }
 }

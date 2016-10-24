@@ -4,8 +4,10 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaMetadataRetriever;
@@ -42,10 +44,17 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
         }
     }
 
-    public static final String START_PLAY_TRACK_EVENT = "start_play_track_event";
+    public static final String CHANGE_STATE_AUDIO_SERVICE_EVENT = "change_state_audio_service_event";
     public static final String ERROR_AUDIO_SERVICE_EVENT = "error_audio_service_event";
 
+    private static final String ACTION_PLAY = "action_play";
+    private static final String ACTION_PAUSE = "action_pause";
+    private static final String ACTION_STOP = "action_stop";
+
+
     private MediaPlayer mediaPlayer;
+
+    private BroadcastReceiver actionNotificationReceiver;
 
     private ServiceBinder binder =  new ServiceBinder();
 
@@ -53,14 +62,14 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
 
     private String audioFileUri = "android.resource://com.mercury.gnusin.myaudioplayer/raw/africa_with_cover";
 
-    private @ServiceState
-    int stateService = ServiceState.UNDEFINED;
+    private @ServiceState int stateService = ServiceState.UNDEFINED;
+
 
     @Override
     public void onPrepared(MediaPlayer mp) {
         mediaPlayer.start();
         stateService = ServiceState.PLAY;
-        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(new Intent(START_PLAY_TRACK_EVENT));
+        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(new Intent(CHANGE_STATE_AUDIO_SERVICE_EVENT));
 
         NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         notificationManager.notify(1, notification);
@@ -74,34 +83,46 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
                 Intent errorIntent = new Intent(ERROR_AUDIO_SERVICE_EVENT);
                 errorIntent.putExtra("error", getResources().getString(R.string.no_set_track_error_message));
                 LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(errorIntent);
+            } else {
+
+
+                mediaPlayer = new MediaPlayer();
+                mediaPlayer.setOnPreparedListener(this);
+                mediaPlayer.setOnErrorListener(this);
+
+
+                mediaPlayer.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
+
+                mediaPlayer.setDataSource(getApplicationContext(), trackUri);
+                mediaPlayer.prepare();
+
+                notification = buildNotification(trackUri);
+
+                actionNotificationReceiver = new BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context context, Intent intent) {
+                        switch (intent.getAction()) {
+                            case ACTION_PLAY:
+                                playContinue();
+                                break;
+                            case ACTION_PAUSE:
+                                pause();
+                                break;
+                            case ACTION_STOP:
+                                stop();
+                                break;
+                        }
+                    }
+                };
+                IntentFilter intentFilter = new IntentFilter();
+                intentFilter.addAction(ACTION_PLAY);
+                intentFilter.addAction(ACTION_PAUSE);
+                intentFilter.addAction(ACTION_STOP);
+                registerReceiver(actionNotificationReceiver, intentFilter);
+
+                startForeground(1, notification);
             }
-
-            mediaPlayer = new MediaPlayer();
-            mediaPlayer.setOnPreparedListener(this);
-            mediaPlayer.setOnErrorListener(this);
-
-
-            mediaPlayer.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
-
-            mediaPlayer.setDataSource(getApplicationContext(), trackUri);
-            mediaPlayer.prepare();
-
-            Intent notificationIntent = new Intent(getApplicationContext(), PlayerControlActivity_.class);
-            notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, notificationIntent, PendingIntent.FLAG_CANCEL_CURRENT);
-
-            notification = new NotificationCompat.Builder(getApplicationContext())
-                    .setContentTitle(getResources().getString(R.string.title_notification))
-                    .setContentText(String.format(getResources().getString(R.string.text_notification), trackUri.getPath().substring(trackUri.getPath().lastIndexOf("/") + 1, trackUri.getPath().length())))
-                    .setSmallIcon(R.mipmap.audio_player)
-                    .setLargeIcon(getTrackCover(getApplicationContext()))
-                    .setContentIntent(pendingIntent)
-                    //.setStyle(new NotificationCompat.MediaStyle()
-                    .build();
-            notification.flags |= Notification.FLAG_FOREGROUND_SERVICE;
-
-            startForeground(1, notification);
-        } catch (IOException e) {
+        } catch(IOException e){
             Intent errorIntent = new Intent(ERROR_AUDIO_SERVICE_EVENT);
             errorIntent.putExtra("error", e.toString());
             LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(errorIntent);
@@ -111,17 +132,20 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
 
     @Override
     public IBinder onBind(Intent intent) {
+
         return binder;
     }
 
     public void playContinue() {
         mediaPlayer.start();
         stateService = ServiceState.PLAY;
+        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(new Intent(CHANGE_STATE_AUDIO_SERVICE_EVENT));
     }
 
     public void pause() {
         mediaPlayer.pause();
         stateService = ServiceState.PAUSE;
+        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(new Intent(CHANGE_STATE_AUDIO_SERVICE_EVENT));
     }
 
     public void stop() {
@@ -131,7 +155,9 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
             mediaPlayer = null;
         }
         stopForeground(true);
+        unregisterReceiver(actionNotificationReceiver);
         stateService = ServiceState.STOP;
+        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(new Intent(CHANGE_STATE_AUDIO_SERVICE_EVENT));
     }
 
     public @ServiceState
@@ -169,5 +195,35 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
             mediaPlayer = null;
         }
         super.onDestroy();
+    }
+
+    private Notification buildNotification(Uri trackUri) {
+        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this);
+
+        PendingIntent playIntent = PendingIntent.getBroadcast(this, 100, new Intent(ACTION_PLAY), PendingIntent.FLAG_CANCEL_CURRENT);
+        notificationBuilder.addAction(new NotificationCompat.Action(R.mipmap.play_button_notification, "Play", playIntent));
+
+        PendingIntent pauseIntent = PendingIntent.getBroadcast(this, 100, new Intent(ACTION_PAUSE), PendingIntent.FLAG_CANCEL_CURRENT);
+        notificationBuilder.addAction(new NotificationCompat.Action(R.mipmap.pause_button_notification, "Pause", pauseIntent));
+
+        PendingIntent stopIntent = PendingIntent.getBroadcast(this, 100, new Intent(ACTION_STOP), PendingIntent.FLAG_CANCEL_CURRENT);
+        notificationBuilder.addAction(new NotificationCompat.Action(R.mipmap.stop_button_notification, "Stop", stopIntent));
+
+        Intent notificationIntent = new Intent(getApplicationContext(), PlayerControlActivity_.class);
+        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, notificationIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+
+
+        notificationBuilder
+                .setContentTitle(getResources().getString(R.string.title_notification))
+                .setContentText(String.format(getResources().getString(R.string.text_notification), trackUri.getPath().substring(trackUri.getPath().lastIndexOf("/") + 1, trackUri.getPath().length())))
+                .setSmallIcon(R.mipmap.audio_player)
+                .setLargeIcon(getTrackCover(getApplicationContext()))
+                .setContentIntent(pendingIntent)
+                .setStyle(new NotificationCompat.MediaStyle());
+
+        Notification notif = notificationBuilder.build();
+        notif.flags |= Notification.FLAG_FOREGROUND_SERVICE;
+        return notif;
     }
 }

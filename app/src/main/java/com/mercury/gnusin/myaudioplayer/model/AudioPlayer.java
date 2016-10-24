@@ -20,9 +20,7 @@ public class AudioPlayer implements AudioPlayerInterface {
     private @PlayerState
     int playerState = PlayerState.DISCONNECT;
 
-    private BroadcastReceiver startPlayReceiver;
-
-    private BroadcastReceiver errorAudioPlayServiceReceiver;
+    private BroadcastReceiver audioServiceReceiver;
 
     private LocalBroadcastManager broadcastManager;
 
@@ -59,23 +57,39 @@ public class AudioPlayer implements AudioPlayerInterface {
             }
         };
 
-        startPlayReceiver = new BroadcastReceiver() {
+        audioServiceReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                changeState(PlayerState.PLAY);
+                switch (intent.getAction()) {
+                    case AudioPlayerService.CHANGE_STATE_AUDIO_SERVICE_EVENT:
+                        switch (serviceBinder.getService().getStateService()) {
+                            case AudioPlayerService.ServiceState.UNDEFINED:
+                                changeState(PlayerState.CONNECT);
+                                break;
+                            case AudioPlayerService.ServiceState.PLAY:
+                                changeState(PlayerState.PLAY);
+                                break;
+                            case AudioPlayerService.ServiceState.PAUSE:
+                                changeState(PlayerState.PAUSE);
+                                break;
+                            case AudioPlayerService.ServiceState.STOP:
+                                changeState(PlayerState.STOP);
+                                break;
+                        }
+                        break;
+                    case AudioPlayerService.ERROR_AUDIO_SERVICE_EVENT:
+                        Intent playerIntent = new Intent(ERROR_AUDIO_PLAYER_EVENT);
+                        playerIntent.putExtra("error", intent.getStringExtra("error"));
+                        broadcastManager.sendBroadcast(playerIntent);
+                        break;
+                }
             }
         };
-        broadcastManager.registerReceiver(startPlayReceiver, new IntentFilter(AudioPlayerService.START_PLAY_TRACK_EVENT));
 
-        errorAudioPlayServiceReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                Intent playerIntent = new Intent(ERROR_AUDIO_PLAYER_EVENT);
-                playerIntent.putExtra("error", intent.getStringExtra("error"));
-                broadcastManager.sendBroadcast(playerIntent);
-            }
-        };
-        broadcastManager.registerReceiver(errorAudioPlayServiceReceiver, new IntentFilter(AudioPlayerService.ERROR_AUDIO_SERVICE_EVENT));
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(AudioPlayerService.CHANGE_STATE_AUDIO_SERVICE_EVENT);
+        intentFilter.addAction(AudioPlayerService.ERROR_AUDIO_SERVICE_EVENT);
+        broadcastManager.registerReceiver(audioServiceReceiver, intentFilter);
 
         context.bindService(new Intent(context, AudioPlayerService.class), serviceConnection, Context.BIND_AUTO_CREATE);
     }
@@ -118,8 +132,7 @@ public class AudioPlayer implements AudioPlayerInterface {
     @Override
     public void release(Context context) {
         context.unbindService(serviceConnection);
-        broadcastManager.unregisterReceiver(startPlayReceiver);
-        broadcastManager.unregisterReceiver(errorAudioPlayServiceReceiver);
+        broadcastManager.unregisterReceiver(audioServiceReceiver);
     }
 
     private void changeState(@PlayerState int state) {

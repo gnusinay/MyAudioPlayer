@@ -65,6 +65,7 @@ public class AudioPlayerPresenter implements AudioPlayerPresenterInterface{
         audioPlayer.stop();
     }
 
+
     private void registrationEventReceivers(Context context) {
         BroadcastReceiver changeStatePlayerEvent = new BroadcastReceiver() {
             @Override
@@ -75,8 +76,8 @@ public class AudioPlayerPresenter implements AudioPlayerPresenterInterface{
                     if (playerState == AudioPlayerInterface.PlayerState.DISCONNECT) {
                         boundView.stopApp();
                     } else {
-                        if (playerState != AudioPlayerInterface.PlayerState.STOP) {
-                            Bitmap cover = audioPlayer.getPlayingTrackCover(boundView.getContext());
+                        if (playerState == AudioPlayerInterface.PlayerState.PLAY || playerState == AudioPlayerInterface.PlayerState.PAUSE) {
+                            Bitmap cover = audioPlayer.getPlayingTrackCover(((Context) boundView).getApplicationContext());
                             if (cover != null) {
                                 boundView.setCover(cover);
                             } else {
